@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>Там, где ты</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400;1,500&family=Manrope:wght@400;500&display=swap">
+<style>
+/* Layout: one full-screen film frame; photos crossfade with slow drift, captions sit low like subtitles */
+:root {
+  --night: #0d0b0a;
+  --ink: #f3ece4;
+  --dim: rgba(243, 236, 228, .62);
+  --amber: #e7b98a;
+  --veil: rgba(13, 11, 10, .55);
+  --display: "Cormorant Garamond", "Times New Roman", Georgia, serif;
+  --body: "Manrope", -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--night); color: var(--ink); font-family: var(--body);
+  overflow: hidden; -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.film { position: fixed; inset: 0; overflow: hidden; background: var(--night); }
+
+.slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.6s ease; }
+.slide.on { opacity: 1; }
+.slide .bg, .slide .fg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.slide .bg { object-fit: cover; filter: blur(28px) brightness(.45) saturate(1.1); transform: scale(1.2); }
+.slide .fg { object-fit: contain; }
+@media (max-aspect-ratio: 4/5) { .slide .fg { object-fit: cover; } }
+.slide.on .fg { animation: drift var(--dur, 8s) ease-out forwards; }
+.slide.alt.on .fg { animation-name: drift2; }
+@keyframes drift { from { transform: scale(1.0) translate(0, 0); } to { transform: scale(1.09) translate(-1.2%, -1%); } }
+@keyframes drift2 { from { transform: scale(1.1) translate(1%, 1%); } to { transform: scale(1.0) translate(0, 0); } }
+.slide.bw .fg, .slide.bw .bg { filter: grayscale(1); }
+.slide.bw .bg { filter: grayscale(1) blur(28px) brightness(.4); }
+
+.shade { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 85% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%),
+              linear-gradient(to top, rgba(0,0,0,.6), transparent 34%); }
+.grain { position: absolute; inset: -50%; pointer-events: none; opacity: .09; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: grain .9s steps(4) infinite; }
+@keyframes grain { 0%{transform:translate(0,0)} 25%{transform:translate(-3%,2%)} 50%{transform:translate(2%,-3%)} 75%{transform:translate(-2%,-1%)} }
+
+.caption { position: absolute; left: 0; right: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px));
+  text-align: center; pointer-events: none; }
+.caption span { display: inline-block; font-family: var(--display); font-style: italic; font-weight: 400;
+  font-size: clamp(26px, 6.4vw, 44px); line-height: 1.1; text-wrap: balance; text-shadow: 0 2px 18px rgba(0,0,0,.6);
+  opacity: 0; transform: translateY(10px); transition: opacity 1.4s ease, transform 1.4s ease; }
+.caption small { display: block; margin-top: 10px; font: 500 11px/1 var(--body); letter-spacing: .28em;
+  text-transform: uppercase; color: var(--amber); font-style: normal; }
+.caption.on span { opacity: 1; transform: none; }
+
+.bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255,255,255,.12);
+  margin-bottom: env(safe-area-inset-bottom, 0px); }
+.bar i { display: block; height: 100%; width: 0; background: var(--amber); }
+
+.hint { position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); right: max(18px, env(safe-area-inset-right, 0px));
+  font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim);
+  opacity: 0; transition: opacity .4s; pointer-events: none; }
+.paused .hint { opacity: 1; }
+
+/* Cover and finale screens */
+.screen { position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px));
+  background: var(--veil); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: opacity 1.2s ease; }
+.screen.gone { opacity: 0; pointer-events: none; }
+.stack { display: grid; gap: 22px; justify-items: center; max-width: 30ch; }
+.eyebrow { font-size: 11px; letter-spacing: .32em; text-transform: uppercase; color: var(--amber); }
+.title { font-family: var(--display); font-weight: 500; font-size: clamp(40px, 11vw, 76px); line-height: .98; text-wrap: balance; }
+.title em { font-style: italic; font-weight: 400; color: var(--amber); }
+.lede { color: var(--dim); font-size: 14px; line-height: 1.6; }
+.btn { appearance: none; border: 1px solid rgba(231,185,138,.55); background: rgba(231,185,138,.12); color: var(--ink);
+  font: 500 15px/1 var(--body); letter-spacing: .04em; padding: 16px 30px; border-radius: 999px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 12px; transition: background .3s, transform .3s; }
+.btn:hover { background: rgba(231,185,138,.24); }
+.btn:active { transform: scale(.97); }
+.btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+.heart { width: 16px; height: 16px; fill: var(--amber); animation: beat 1.4s ease-in-out infinite; }
+@keyframes beat { 0%,100%{transform:scale(1)} 15%{transform:scale(1.22)} 30%{transform:scale(1)} 45%{transform:scale(1.14)} }
+.loading { font-size: 12px; color: var(--dim); min-height: 1em; }
+.cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; filter: brightness(.55); }
+
+@media (prefers-reduced-motion: reduce) {
+  .slide.on .fg, .grain, .heart { animation: none; }
+}
+</style>
+
+<div class="film" id="film">
+  <div id="slides"></div>
+  <div class="shade"></div>
+  <div class="grain"></div>
+  <div class="caption" id="caption"><span></span></div>
+  <div class="bar"><i id="progress"></i></div>
+  <div class="hint">пауза · нажми, чтобы продолжить</div>
+
+  <div class="screen" id="cover">
+    <div class="stack">
+      <div class="eyebrow">для тебя</div>
+      <h1 class="title">Там, где ты, <em>там и есть мой дом</em></h1>
+      <p class="lede">Включи звук и смотри до конца</p>
+      <button class="btn" id="start" type="button">
+        <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.5h2c.7-1.3 2.2-2.5 4.3-2.5 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>
+        Нажми
+      </button>
+      <div class="loading" id="loading"></div>
+    </div>
+  </div>
+
+  <div class="screen gone" id="finale">
+    <div class="stack">
+      <div class="eyebrow">и дальше вместе</div>
+      <h2 class="title">Там, где ты, <em>там и есть мой дом</em></h2>
+      <button class="btn" id="again" type="button">Посмотреть ещё раз</button>
+    </div>
+  </div>
+</div>
+
+<audio id="song" src="media/song.mp3" preload="auto"></audio>
+
+<script>
+// Each entry: file, optional caption [text, small label] shown with that frame.
+const SHOTS = [
+  ["chat_5.jpg", ["Помнишь, с чего всё начиналось", "май"]],
+  ["IMG_1627.jpg"],
+  ["IMG_1708.jpg"],
+  ["IMG_4041.jpg"],
+  ["IMG_4055.jpg"],
+  ["IMG_1725.jpg"],
+  ["IMG_1724.jpg"],
+  ["IMG_2335.jpg", ["Дни, километры", "июнь"]],
+  ["IMG_2362.jpg"],
+  ["IMG_1621.jpg"],
+  ["IMG_3749.jpg"],
+  ["IMG_3664.jpg"],
+  ["IMG_3764.jpg", ["Тбилиси", "август"]],
+  ["IMG_3784.jpg"],
+  ["IMG_3815.jpg"],
+  ["IMG_3831.jpg"],
+  ["IMG_3872.jpg"],
+  ["clip_garden.mp4"],
+  ["chat_4.jpg"],
+  ["chat_2.jpg"],
+  ["IMG_4061.jpg"],
+  ["IMG_4090.jpg"],
+  ["chat_1.jpg"],
+  ["clip_falls.mp4"],
+  ["IMG_4109.jpg"],
+  ["IMG_4123.jpg"],
+  ["IMG_4125.jpg"],
+  ["IMG_4143.jpg"],
+  ["chat_3.jpg"],
+  ["chat_6.jpg", ["Ты мой дом", ""], "bw"],
+];
+const START = 1.4, END = 219.5;            // music runs ~1.7s → 224s
+const STEP = (END - START) / SHOTS.length;  // ≈ 7.3 s per frame
+
+const $ = id => document.getElementById(id);
+const song = $("song"), slidesEl = $("slides"), cap = $("caption"), capText = cap.querySelector("span");
+const film = $("film");
+
+const slides = SHOTS.map(([file, caption, mod], i) => {
+  const el = document.createElement("div");
+  el.className = "slide" + (i % 2 ? " alt" : "") + (mod ? " " + mod : "");
+  el.style.setProperty("--dur", (STEP + 2) + "s");
+  slidesEl.appendChild(el);
+  return { el, file, caption, video: /\.mp4$/.test(file), loaded: false };
+});
+
+function load(i) {
+  const s = slides[i];
+  if (!s || s.loaded) return;
+  s.loaded = true;
+  const src = "media/" + s.file;
+  if (s.video) {
+    const mk = cls => { const v = document.createElement("video");
+      Object.assign(v, { src, muted: true, playsInline: true, loop: true, preload: "auto" });
+      v.setAttribute("playsinline", ""); v.setAttribute("muted", ""); v.className = cls; return v; };
+    s.el.append(mk("bg"), mk("fg"));
+  } else {
+    s.el.innerHTML = `<img class="bg" src="${src}" alt=""><img class="fg" src="${src}" alt="">`;
+  }
+}
+for (let i = 0; i < 4; i++) load(i);
+
+let current = -1;
+function show(i) {
+  if (i === current) return;
+  const prev = slides[current];
+  if (prev) { prev.el.classList.remove("on"); if (prev.video) prev.el.querySelectorAll("video").forEach(v => v.pause()); }
+  current = i;
+  const s = slides[i];
+  if (!s) return;
+  load(i); load(i + 1); load(i + 2); load(i + 3);
+  // restart the drift animation
+  s.el.classList.remove("on"); void s.el.offsetWidth; s.el.classList.add("on");
+  if (s.video) s.el.querySelectorAll("video").forEach(v => { v.currentTime = 0; v.play().catch(() => {}); });
+  cap.classList.remove("on");
+  if (s.caption) {
+    capText.innerHTML = s.caption[0] + (s.caption[1] ? `<small>${s.caption[1]}</small>` : "");
+    requestAnimationFrame(() => cap.classList.add("on"));
+  }
+}
+
+let finaleShown = false;
+function tick() {
+  const t = song.currentTime;
+  const i = Math.max(0, Math.min(SHOTS.length - 1, Math.floor((t - START) / STEP)));
+  show(i);
+  if (current >= 0 && slides[current].caption && t - (START + i * STEP) > STEP - 1.6) cap.classList.remove("on");
+  $("progress").style.width = Math.min(100, (t / END) * 100) + "%";
+  if (t >= END && !finaleShown) { finaleShown = true; $("finale").classList.remove("gone"); }
+  if (!song.paused) requestAnimationFrame(tick);
+}
+
+let wake = null;
+async function keepAwake() { try { wake = await navigator.wakeLock?.request("screen"); } catch (e) {} }
+
+function play() {
+  song.play().then(() => { film.classList.remove("paused"); keepAwake(); requestAnimationFrame(tick); })
+    .catch(() => { $("loading").textContent = "Не получилось включить звук, нажми ещё раз"; });
+}
+
+$("start").addEventListener("click", e => {
+  e.stopPropagation();
+  $("cover").classList.add("gone");
+  play();
+});
+$("again").addEventListener("click", e => {
+  e.stopPropagation();
+  finaleShown = false; $("finale").classList.add("gone");
+  song.currentTime = 0; current = -1; play();
+});
+film.addEventListener("click", () => {
+  if (!$("cover").classList.contains("gone") || finaleShown) return;
+  if (song.paused) play(); else { song.pause(); film.classList.add("paused"); }
+});
+song.addEventListener("ended", () => { finaleShown = true; $("finale").classList.remove("gone"); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !song.paused) keepAwake(); });
+
+// Cover shows the first photo behind the title
+const coverImg = document.createElement("img");
+coverImg.className = "cover-photo"; coverImg.src = "media/IMG_4143.jpg"; coverImg.alt = "";
+$("cover").prepend(coverImg);
+</script>
